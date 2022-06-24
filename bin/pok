@@ -1,0 +1,5 @@
+#! /usr/bin/env node
+
+const { Creator } = require('../dist/index')
+
+new Creator().run();

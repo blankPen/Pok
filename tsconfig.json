@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es5",
+    "noImplicitAny": false,
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationDir": "./types",
+    "rootDir": "src",
+    "outDir": "dist",
+    "resolveJsonModule": true,
+    "allowJs": true
+  },
+  "include": ["src/**/*.tsx", "src/**/*.ts", "global.d.ts"]
+}
