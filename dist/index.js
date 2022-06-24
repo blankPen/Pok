@@ -50,7 +50,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Creator = void 0;
+exports.create = exports.Creator = exports.shouldUseYarn = void 0;
 var prompts_1 = __importDefault(require("prompts"));
 var chalk_1 = __importDefault(require("chalk"));
 var os_1 = __importDefault(require("os"));
@@ -61,47 +61,29 @@ var shelljs_1 = __importDefault(require("shelljs"));
 var klaw_1 = __importDefault(require("klaw"));
 var handlebars_1 = __importDefault(require("handlebars"));
 var signale_1 = require("signale");
+var child_process_1 = require("child_process");
 var hash = function (str) { return crypto_1.default.createHash('md5').update(str).digest('hex'); };
 var tempCacheDir = path_1.default.join(os_1.default.homedir(), '.pok');
 var options = {
     disabled: false,
     interactive: false,
-    scope: 'Pok',
-    types: {
-        // time: {
-        //     badge: '',
-        //     color: 'green',
-        //     label: 'success'
-        // },
-        santa: {
-            badge: '🎅',
-            color: 'red',
-            label: 'santa'
-        }
-    },
+    types: {},
     config: {
-    // displayFilename: true,
-    // displayTimestamp: true,
-    // displayDate: true,
-    // displayBadge: false,
+        displayLabel: false,
     }
 };
 var logger = new signale_1.Signale(options);
-var inavLogger = new signale_1.Signale(__assign(__assign({}, options), { interactive: true }));
-// log4js.configure({
-//     appenders: {
-//         console: {
-//             type: 'console'
-//         }
-//     },
-//     categories: {
-//         default: {
-//             appenders: ['console'],
-//             level: process.env.LEVEL || 'all'
-//         }
-//     }
-// });
-// const logger = logger.getLogger('Pok')
+var createInteractiveLogger = function () { return new signale_1.Signale(__assign(__assign({}, options), { interactive: true })); };
+function shouldUseYarn() {
+    try {
+        child_process_1.execSync('yarn --version', { stdio: 'ignore' });
+        return true;
+    }
+    catch (e) {
+        return false;
+    }
+}
+exports.shouldUseYarn = shouldUseYarn;
 var configName = 'pok.config.js';
 var contextLib = {
     prompts: prompts_1.default,
@@ -113,8 +95,6 @@ var scanFiles = function (templateDir) {
     var result = new Set();
     return new Promise(function (resolve, reject) {
         klaw_1.default(templateDir).on('data', function (item) {
-            if (item.path.startsWith(templateDir + "/.git/"))
-                return;
             if (!item.stats.isFile())
                 return;
             result.add(item.path);
@@ -125,23 +105,29 @@ var scanFiles = function (templateDir) {
         });
     });
 };
+var cancel = function () {
+    logger.log('');
+    logger.error('操作取消');
+    logger.log('');
+    process.exit(1);
+};
 var Creator = /** @class */ (function () {
     function Creator() {
         this.context = __assign({}, contextLib);
     }
-    Creator.prototype.loadCreator = function () {
+    Creator.prototype.loadCreator = function (_a) {
+        var remote = _a.remote, branch = _a.branch;
         return __awaiter(this, void 0, void 0, function () {
-            var remote, branch, outputName, tempOutputDir, hasOutput, configPath, hasConfig, creator, creatorConfig;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
+            var outputName, tempOutputDir, hasOutput, configPath, hasConfig, creator, creatorConfig;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
                     case 0:
-                        remote = 'ssh://git@git.sankuai.com/waimai-f2e/waimai_mach_project_template.git';
-                        branch = 'react';
+                        branch = branch || 'master';
                         outputName = path_1.default.basename(remote, '.git') + "_" + hash(remote + "/" + branch);
                         tempOutputDir = path_1.default.join(tempCacheDir, outputName);
                         return [4 /*yield*/, fs_extra_1.default.ensureDir(tempCacheDir)];
                     case 1:
-                        _a.sent();
+                        _b.sent();
                         if (!fs_extra_1.default.existsSync(tempOutputDir)) {
                             shelljs_1.default.exec("git clone --depth 1 -b " + branch + " " + remote + " " + outputName, { cwd: tempCacheDir, silent: true });
                         }
@@ -187,16 +173,43 @@ var Creator = /** @class */ (function () {
             });
         });
     };
-    Creator.prototype.run = function () {
+    Creator.prototype.run = function (params) {
         return __awaiter(this, void 0, void 0, function () {
-            var pok;
+            var inc, pok;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, this.loadCreator()];
+                    case 0:
+                        if (!(!params.remote && !params.branch)) return [3 /*break*/, 2];
+                        return [4 /*yield*/, this.context.prompts([
+                                {
+                                    name: 'remote',
+                                    type: 'text',
+                                    message: '请输入要创建的模板Git地址:',
+                                    validate: function (value) {
+                                        if (!/^(ssh|http|https):\/\//.test(value))
+                                            return '请输入正确的Git地址';
+                                        return true;
+                                    }
+                                },
+                                {
+                                    name: 'branch',
+                                    type: 'text',
+                                    message: '请输入模板所属分支:',
+                                    initial: 'master',
+                                },
+                            ])];
                     case 1:
-                        pok = _a.sent();
-                        return [4 /*yield*/, this.runPok(pok)];
+                        params = _a.sent();
+                        _a.label = 2;
                     case 2:
+                        inc = createInteractiveLogger();
+                        inc.await('正在加载模板');
+                        return [4 /*yield*/, this.loadCreator(params)];
+                    case 3:
+                        pok = _a.sent();
+                        inc.success('模板加载完成');
+                        return [4 /*yield*/, this.runPok(pok)];
+                    case 4:
                         _a.sent();
                         return [2 /*return*/];
                 }
@@ -206,105 +219,149 @@ var Creator = /** @class */ (function () {
     Creator.prototype.runPok = function (_a) {
         var config = _a.config, templateDir = _a.templateDir, configPath = _a.configPath;
         return __awaiter(this, void 0, void 0, function () {
-            var params, _b, cwd, root, rootExists, overwrite, files;
-            var _this = this;
-            return __generator(this, function (_c) {
-                switch (_c.label) {
+            var params, _b, targetPath, _c, _d, _e, targetDir_1, targetDir, rootExists, overwrite, files, i, filepath, relativePath, outputFilePath, tempCode, cmd;
+            return __generator(this, function (_f) {
+                switch (_f.label) {
                     case 0:
-                        if (config.startText)
-                            logger.info(config.startText());
+                        if (config.start)
+                            config.start();
                         if (!config.prompting) return [3 /*break*/, 2];
                         return [4 /*yield*/, config.prompting()];
                     case 1:
-                        _b = _c.sent();
+                        _b = _f.sent();
                         return [3 /*break*/, 3];
                     case 2:
                         _b = {};
-                        _c.label = 3;
+                        _f.label = 3;
                     case 3:
                         params = _b;
                         Object.assign(this.context.userConfig, params);
-                        cwd = process.cwd();
-                        root = cwd;
-                        if (typeof config.root === 'string') {
-                            root = path_1.default.join(process.cwd(), config.root);
-                        }
-                        else if (typeof config.root === 'function') {
-                            root = path_1.default.join(process.cwd(), config.root());
-                        }
-                        return [4 /*yield*/, fs_extra_1.default.pathExists(root)];
+                        targetPath = process.cwd();
+                        if (!config.targetDir) return [3 /*break*/, 5];
+                        _d = (_c = path_1.default).join;
+                        _e = [process.cwd()];
+                        return [4 /*yield*/, config.targetDir()];
                     case 4:
-                        rootExists = _c.sent();
-                        if (!rootExists) return [3 /*break*/, 6];
+                        targetPath = _d.apply(_c, _e.concat([_f.sent()]));
+                        return [3 /*break*/, 8];
+                    case 5:
+                        if (!params.projectName) return [3 /*break*/, 6];
+                        targetPath = params.projectName;
+                        return [3 /*break*/, 8];
+                    case 6: return [4 /*yield*/, this.context.prompts({
+                            name: 'targetDir',
+                            type: 'text',
+                            message: '项目路径:',
+                            validate: function (value) { return !!value || ''; }
+                        })];
+                    case 7:
+                        targetDir_1 = (_f.sent()).targetDir;
+                        targetPath = path_1.default.join(process.cwd(), targetDir_1);
+                        _f.label = 8;
+                    case 8:
+                        targetDir = targetPath.replace(process.cwd() + '/', '');
+                        return [4 /*yield*/, fs_extra_1.default.pathExists(targetPath)];
+                    case 9:
+                        rootExists = _f.sent();
+                        if (!rootExists) return [3 /*break*/, 11];
                         return [4 /*yield*/, this.context.prompts({
                                 name: 'overwrite',
                                 type: 'toggle',
-                                message: "\u9879\u76EE\u8DEF\u5F84\uFF1A" + root.replace(cwd, '') + " \u5DF2\u5B58\u5728\uFF0C\u662F\u5426\u8FDB\u884C\u8986\u76D6\uFF1F",
+                                message: "\u8DEF\u5F84 " + targetDir + " \u5DF2\u5B58\u5728\uFF0C\u662F\u5426\u8FDB\u884C\u8986\u76D6\uFF1F",
                                 initial: false,
                                 active: '是',
                                 inactive: '否'
                             })];
-                    case 5:
-                        overwrite = (_c.sent()).overwrite;
+                    case 10:
+                        overwrite = (_f.sent()).overwrite;
                         if (!overwrite)
-                            throw new Error(chalk_1.default.red('✖') + ' 操作取消');
-                        _c.label = 6;
-                    case 6: return [4 /*yield*/, scanFiles(templateDir)];
-                    case 7:
-                        files = _c.sent();
-                        // each render template
-                        return [4 /*yield*/, Promise.all(files.map(function (filepath) { return __awaiter(_this, void 0, void 0, function () {
-                                var relativePath, outputFilePath, tempCode, result;
-                                return __generator(this, function (_a) {
-                                    switch (_a.label) {
-                                        case 0:
-                                            if (configPath === filepath)
-                                                return [2 /*return*/];
-                                            relativePath = path_1.default.relative(templateDir, filepath);
-                                            outputFilePath = path_1.default.join(root, relativePath);
-                                            return [4 /*yield*/, fs_extra_1.default.readFile(filepath, 'utf8')];
-                                        case 1:
-                                            tempCode = _a.sent();
-                                            try {
-                                                tempCode = handlebars_1.default.compile(tempCode)(__assign({}, this.context.userConfig));
-                                            }
-                                            catch (error) {
-                                                logger.error('hbs.compile 失败, 请检查模板是否正确:', relativePath);
-                                                logger.error(error);
-                                                process.exit(1);
-                                            }
-                                            if (config.render) {
-                                                result = config.render({ path: filepath, code: tempCode });
-                                                // skip filter
-                                                if (result === false)
-                                                    return [2 /*return*/];
-                                                tempCode = String(result);
-                                            }
-                                            return [4 /*yield*/, fs_extra_1.default.ensureDir(path_1.default.dirname(outputFilePath))];
-                                        case 2:
-                                            _a.sent();
-                                            return [4 /*yield*/, fs_extra_1.default.writeFile(outputFilePath, tempCode)];
-                                        case 3:
-                                            _a.sent();
-                                            return [2 /*return*/];
-                                    }
-                                });
-                            }); }))
-                            // initializing：初始化方法（检验当前项目状态、获取configs、等）
-                            // prompting：获取用户选项
-                            // configuring：保存配置（创建.editorconfig 文件）
-                            // default：如果函数名称如生命周期钩子不一样，则会被放进这个组
-                            // writing：写generator特殊的文件（路由、控制器、等）
-                            // conflicts：冲突后处理办法
-                            // install：正在安装（npm、bower）
-                            // end：安装结束、清除文件、设置good bye文案、等
-                            // prompts
-                            // 
-                        ];
-                    case 8:
-                        // each render template
-                        _c.sent();
-                        return [2 /*return*/];
+                            return [2 /*return*/, cancel()];
+                        _f.label = 11;
+                    case 11:
+                        console.log('');
+                        return [4 /*yield*/, scanFiles(templateDir)];
+                    case 12: return [4 /*yield*/, (_f.sent()).filter(function (filepath) {
+                            // filter file
+                            if (filepath.startsWith(templateDir + "/.git/"))
+                                return false;
+                            if (configPath === filepath)
+                                return false;
+                            if (config.filter) {
+                                var match = false;
+                                if (typeof config.filter === 'function') {
+                                    match = config.filter(filepath);
+                                }
+                                else if (config.filter.test) {
+                                    match = config.filter.test(filepath);
+                                }
+                                if (!match)
+                                    return;
+                            }
+                            return true;
+                        }).sort()];
+                    case 13:
+                        files = _f.sent();
+                        i = 0;
+                        _f.label = 14;
+                    case 14:
+                        if (!(i < files.length)) return [3 /*break*/, 19];
+                        filepath = files[i];
+                        relativePath = path_1.default.relative(templateDir, filepath);
+                        outputFilePath = path_1.default.join(targetPath, path_1.default.dirname(relativePath), path_1.default.basename(relativePath, '.hbs'));
+                        return [4 /*yield*/, fs_extra_1.default.readFile(filepath, 'utf8')];
+                    case 15:
+                        tempCode = _f.sent();
+                        try {
+                            tempCode = handlebars_1.default.compile(tempCode, config.handlebars)(__assign({}, this.context.userConfig));
+                        }
+                        catch (error) {
+                            logger.error('hbs.compile 失败, 请检查模板是否正确:', relativePath);
+                            logger.error(error);
+                            process.exit(1);
+                        }
+                        if (config.render)
+                            tempCode = config.render({ path: filepath, code: tempCode });
+                        // write temp
+                        return [4 /*yield*/, fs_extra_1.default.ensureDir(path_1.default.dirname(outputFilePath))];
+                    case 16:
+                        // write temp
+                        _f.sent();
+                        return [4 /*yield*/, fs_extra_1.default.writeFile(outputFilePath, tempCode)];
+                    case 17:
+                        _f.sent();
+                        logger.success(chalk_1.default.green('created') + " " + relativePath);
+                        _f.label = 18;
+                    case 18:
+                        i++;
+                        return [3 /*break*/, 14];
+                    case 19:
+                        // auto install
+                        if (config.autoInstall) {
+                            console.log('');
+                            logger.await("\u5F00\u59CB\u5B89\u88C5\u4F9D\u8D56");
+                            cmd = '';
+                            if (config.autoInstall === 'npm' || config.autoInstall === 'yarn') {
+                                cmd = config.autoInstall;
+                            }
+                            else {
+                                cmd = shouldUseYarn() ? 'yarn' : 'npm';
+                            }
+                            shelljs_1.default.exec(cmd + " install", { cwd: targetDir });
+                            logger.success("\u4F9D\u8D56\u5B89\u88C5\u5B8C\u6210");
+                        }
+                        if (!config.end) return [3 /*break*/, 21];
+                        console.log('');
+                        return [4 /*yield*/, config.end()];
+                    case 20:
+                        _f.sent();
+                        console.log('');
+                        return [3 /*break*/, 22];
+                    case 21:
+                        console.log('');
+                        logger.success('项目创建完成');
+                        console.log('');
+                        _f.label = 22;
+                    case 22: return [2 /*return*/];
                 }
             });
         });
@@ -312,3 +369,7 @@ var Creator = /** @class */ (function () {
     return Creator;
 }());
 exports.Creator = Creator;
+function create(params) {
+    return new Creator().run(params || {});
+}
+exports.create = create;

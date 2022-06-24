@@ -1,5 +1,17 @@
 #! /usr/bin/env node
+const { Command } = require('commander')
+const { create } = require('../dist/index')
 
-const { Creator } = require('../dist/index')
+const program = new Command();
 
-new Creator().run();
+program
+    .argument('[remote]', 'git remote')
+    .argument('[branch]', 'git branch', 'master')
+    .action((remote, branch) => {
+        if (remote) {
+            create({ remote, branch });
+        } else {
+            create();
+        }
+    })
+    .parse(process.argv)
