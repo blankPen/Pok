@@ -1,5 +1,6 @@
 {
   "name": "pok",
+  "description": "Simple and Elegant project creator",
   "version": "1.0.1",
   "scripts": {
     "dev": "tsc -w",
