@@ -2,6 +2,8 @@
   "name": "pok",
   "description": "Simple and Elegant project creator",
   "version": "1.1.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
     "dev": "tsc -w",
     "build": "tsc"
