@@ -31,7 +31,7 @@ export interface CreatorConfig {
     filter?: RegExp | ((path: string) => boolean);
     targetDir?: () => string;
     start?: () => string;
-    prompting?: () => any;
+    setup?: () => any;
     render?: (file: {
         path: string;
         code: string;

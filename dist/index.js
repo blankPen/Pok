@@ -197,7 +197,11 @@ var Creator = /** @class */ (function () {
                                     message: '请输入模板所属分支:',
                                     initial: 'master',
                                 },
-                            ])];
+                            ], {
+                                onCancel: function () {
+                                    process.exit(1);
+                                }
+                            })];
                     case 1:
                         params = _a.sent();
                         _a.label = 2;
@@ -219,51 +223,42 @@ var Creator = /** @class */ (function () {
     Creator.prototype.runPok = function (_a) {
         var config = _a.config, templateDir = _a.templateDir, configPath = _a.configPath;
         return __awaiter(this, void 0, void 0, function () {
-            var params, _b, targetPath, _c, _d, _e, targetDir_1, targetDir, rootExists, overwrite, files, i, filepath, relativePath, outputFilePath, tempCode, cmd;
-            return __generator(this, function (_f) {
-                switch (_f.label) {
+            var _b, _c, sourceDir, _d, outputDir, _e, tempEnv, _f, autoInstall, _g, targetPath, outputDir_1, targetDir, rootExists, overwrite, sourcePath, files, i, filepath, relativePath, outputFilePath, tempCode, cmd;
+            return __generator(this, function (_h) {
+                switch (_h.label) {
                     case 0:
                         if (config.start)
                             config.start();
-                        if (!config.prompting) return [3 /*break*/, 2];
-                        return [4 /*yield*/, config.prompting()];
+                        if (!config.setup) return [3 /*break*/, 2];
+                        return [4 /*yield*/, config.setup()];
                     case 1:
-                        _b = _f.sent();
+                        _g = _h.sent();
                         return [3 /*break*/, 3];
                     case 2:
-                        _b = {};
-                        _f.label = 3;
+                        _g = {};
+                        _h.label = 3;
                     case 3:
-                        params = _b;
-                        Object.assign(this.context.userConfig, params);
+                        _b = _g, _c = _b.sourceDir, sourceDir = _c === void 0 ? './' : _c, _d = _b.outputDir, outputDir = _d === void 0 ? '' : _d, _e = _b.tempEnv, tempEnv = _e === void 0 ? {} : _e, _f = _b.autoInstall, autoInstall = _f === void 0 ? false : _f;
                         targetPath = process.cwd();
-                        if (!config.targetDir) return [3 /*break*/, 5];
-                        _d = (_c = path_1.default).join;
-                        _e = [process.cwd()];
-                        return [4 /*yield*/, config.targetDir()];
-                    case 4:
-                        targetPath = _d.apply(_c, _e.concat([_f.sent()]));
-                        return [3 /*break*/, 8];
-                    case 5:
-                        if (!params.projectName) return [3 /*break*/, 6];
-                        targetPath = params.projectName;
-                        return [3 /*break*/, 8];
-                    case 6: return [4 /*yield*/, this.context.prompts({
-                            name: 'targetDir',
+                        if (!outputDir) return [3 /*break*/, 4];
+                        targetPath = path_1.default.resolve(process.cwd(), outputDir);
+                        return [3 /*break*/, 6];
+                    case 4: return [4 /*yield*/, this.context.prompts({
+                            name: 'outputDir',
                             type: 'text',
                             message: '项目路径:',
                             validate: function (value) { return !!value || ''; }
                         })];
-                    case 7:
-                        targetDir_1 = (_f.sent()).targetDir;
-                        targetPath = path_1.default.join(process.cwd(), targetDir_1);
-                        _f.label = 8;
-                    case 8:
+                    case 5:
+                        outputDir_1 = (_h.sent()).outputDir;
+                        targetPath = path_1.default.join(process.cwd(), outputDir_1);
+                        _h.label = 6;
+                    case 6:
                         targetDir = targetPath.replace(process.cwd() + '/', '');
                         return [4 /*yield*/, fs_extra_1.default.pathExists(targetPath)];
-                    case 9:
-                        rootExists = _f.sent();
-                        if (!rootExists) return [3 /*break*/, 11];
+                    case 7:
+                        rootExists = _h.sent();
+                        if (!rootExists) return [3 /*break*/, 9];
                         return [4 /*yield*/, this.context.prompts({
                                 name: 'overwrite',
                                 type: 'toggle',
@@ -272,17 +267,17 @@ var Creator = /** @class */ (function () {
                                 active: '是',
                                 inactive: '否'
                             })];
-                    case 10:
-                        overwrite = (_f.sent()).overwrite;
+                    case 8:
+                        overwrite = (_h.sent()).overwrite;
                         if (!overwrite)
                             return [2 /*return*/, cancel()];
-                        _f.label = 11;
-                    case 11:
-                        console.log('');
-                        return [4 /*yield*/, scanFiles(templateDir)];
-                    case 12: return [4 /*yield*/, (_f.sent()).filter(function (filepath) {
+                        _h.label = 9;
+                    case 9:
+                        sourcePath = path_1.default.join(templateDir, sourceDir);
+                        return [4 /*yield*/, scanFiles(sourcePath)];
+                    case 10: return [4 /*yield*/, (_h.sent()).filter(function (filepath) {
                             // filter file
-                            if (filepath.startsWith(templateDir + "/.git/"))
+                            if (filepath.startsWith(sourcePath + "/.git/"))
                                 return false;
                             if (configPath === filepath)
                                 return false;
@@ -299,20 +294,20 @@ var Creator = /** @class */ (function () {
                             }
                             return true;
                         }).sort()];
-                    case 13:
-                        files = _f.sent();
+                    case 11:
+                        files = _h.sent();
                         i = 0;
-                        _f.label = 14;
-                    case 14:
-                        if (!(i < files.length)) return [3 /*break*/, 19];
+                        _h.label = 12;
+                    case 12:
+                        if (!(i < files.length)) return [3 /*break*/, 17];
                         filepath = files[i];
-                        relativePath = path_1.default.relative(templateDir, filepath);
+                        relativePath = path_1.default.relative(sourcePath, filepath);
                         outputFilePath = path_1.default.join(targetPath, path_1.default.dirname(relativePath), path_1.default.basename(relativePath, '.hbs'));
                         return [4 /*yield*/, fs_extra_1.default.readFile(filepath, 'utf8')];
-                    case 15:
-                        tempCode = _f.sent();
+                    case 13:
+                        tempCode = _h.sent();
                         try {
-                            tempCode = handlebars_1.default.compile(tempCode, config.handlebars)(__assign({}, this.context.userConfig));
+                            tempCode = handlebars_1.default.compile(tempCode, config.handlebars)(__assign({}, tempEnv));
                         }
                         catch (error) {
                             logger.error('hbs.compile 失败, 请检查模板是否正确:', relativePath);
@@ -323,25 +318,25 @@ var Creator = /** @class */ (function () {
                             tempCode = config.render({ path: filepath, code: tempCode });
                         // write temp
                         return [4 /*yield*/, fs_extra_1.default.ensureDir(path_1.default.dirname(outputFilePath))];
-                    case 16:
+                    case 14:
                         // write temp
-                        _f.sent();
+                        _h.sent();
                         return [4 /*yield*/, fs_extra_1.default.writeFile(outputFilePath, tempCode)];
-                    case 17:
-                        _f.sent();
+                    case 15:
+                        _h.sent();
                         logger.success(chalk_1.default.green('created') + " " + relativePath);
-                        _f.label = 18;
-                    case 18:
+                        _h.label = 16;
+                    case 16:
                         i++;
-                        return [3 /*break*/, 14];
-                    case 19:
+                        return [3 /*break*/, 12];
+                    case 17:
                         // auto install
-                        if (config.autoInstall) {
+                        if (autoInstall) {
                             console.log('');
                             logger.await("\u5F00\u59CB\u5B89\u88C5\u4F9D\u8D56");
                             cmd = '';
-                            if (config.autoInstall === 'npm' || config.autoInstall === 'yarn') {
-                                cmd = config.autoInstall;
+                            if (autoInstall === 'npm' || autoInstall === 'yarn') {
+                                cmd = autoInstall;
                             }
                             else {
                                 cmd = shouldUseYarn() ? 'yarn' : 'npm';
@@ -349,19 +344,19 @@ var Creator = /** @class */ (function () {
                             shelljs_1.default.exec(cmd + " install", { cwd: targetDir });
                             logger.success("\u4F9D\u8D56\u5B89\u88C5\u5B8C\u6210");
                         }
-                        if (!config.end) return [3 /*break*/, 21];
+                        if (!config.end) return [3 /*break*/, 19];
                         console.log('');
                         return [4 /*yield*/, config.end()];
-                    case 20:
-                        _f.sent();
+                    case 18:
+                        _h.sent();
                         console.log('');
-                        return [3 /*break*/, 22];
-                    case 21:
+                        return [3 /*break*/, 20];
+                    case 19:
                         console.log('');
                         logger.success('项目创建完成');
                         console.log('');
-                        _f.label = 22;
-                    case 22: return [2 /*return*/];
+                        _h.label = 20;
+                    case 20: return [2 /*return*/];
                 }
             });
         });

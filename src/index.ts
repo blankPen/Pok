@@ -58,7 +58,7 @@ export interface CreatorConfig {
     filter?: RegExp | ((path: string) => boolean);
     targetDir?: () => string;
     start?: () => string;
-    prompting?: () => any;
+    setup?: () => any;
     render?: (file: { path: string, code: string }) => string;
     end?: () => void;
 }
@@ -152,7 +152,11 @@ export class Creator {
                     message: '请输入模板所属分支:',
                     initial: 'master',
                 },
-            ])
+            ], {
+                onCancel() {
+                    process.exit(1);
+                }
+            })
         }
 
         const inc = createInteractiveLogger();
@@ -165,23 +169,26 @@ export class Creator {
     async runPok({ config, templateDir, configPath }: { config: CreatorConfig, templateDir: string, configPath: string }) {
         if (config.start) config.start();
         // ask user config
-        const params = config.prompting ? await config.prompting() : {};
-        Object.assign(this.context.userConfig, params);
+        const {
+            sourceDir = './',
+            outputDir = '',
+            tempEnv = {},
+            autoInstall = false,
+        } = config.setup ? await config.setup() : {};
+        // Object.assign(this.context.userConfig, params.env);
 
         // get output basePath
         let targetPath = process.cwd();
-        if (config.targetDir) {
-            targetPath = path.join(process.cwd(), await config.targetDir());
-        } else if (params.projectName) {
-            targetPath = params.projectName;
+        if (outputDir) {
+            targetPath = path.resolve(process.cwd(), outputDir);
         } else {
-            const { targetDir } = await this.context.prompts({
-                name: 'targetDir',
+            const { outputDir } = await this.context.prompts({
+                name: 'outputDir',
                 type: 'text',
                 message: '项目路径:',
                 validate: (value) => !!value || ''
             })
-            targetPath = path.join(process.cwd(), targetDir);
+            targetPath = path.join(process.cwd(), outputDir);
         }
         const targetDir = targetPath.replace(process.cwd() + '/', '')
         const rootExists = await fs.pathExists(targetPath)
@@ -197,11 +204,11 @@ export class Creator {
             if (!overwrite) return cancel();
         }
 
-        console.log('');
         // scan temp dir
-        const files = await (await scanFiles(templateDir)).filter(filepath => {
+        const sourcePath = path.join(templateDir, sourceDir);
+        const files = await (await scanFiles(sourcePath)).filter(filepath => {
             // filter file
-            if (filepath.startsWith(`${templateDir}/.git/`)) return false;
+            if (filepath.startsWith(`${sourcePath}/.git/`)) return false;
             if (configPath === filepath) return false;
             if (config.filter) {
                 let match = false
@@ -215,15 +222,14 @@ export class Creator {
             return true
         }).sort();
         // each render template
-        // await Promise.all();
         for (let i = 0; i < files.length; i++) {
             const filepath = files[i];
-            const relativePath = path.relative(templateDir, filepath)
+            const relativePath = path.relative(sourcePath, filepath)
             const outputFilePath = path.join(targetPath, path.dirname(relativePath), path.basename(relativePath, '.hbs'));
             // compile temp
             let tempCode = await fs.readFile(filepath, 'utf8');
             try {
-                tempCode = hbs.compile(tempCode, config.handlebars)({ ...this.context.userConfig });
+                tempCode = hbs.compile(tempCode, config.handlebars)({ ...tempEnv });
             } catch (error) {
                 logger.error('hbs.compile 失败, 请检查模板是否正确:', relativePath);
                 logger.error(error);
@@ -238,12 +244,12 @@ export class Creator {
         }
 
         // auto install
-        if (config.autoInstall) {
+        if (autoInstall) {
             console.log('');
             logger.await(`开始安装依赖`);
             let cmd = ''
-            if (config.autoInstall === 'npm' || config.autoInstall === 'yarn') {
-                cmd = config.autoInstall
+            if (autoInstall === 'npm' || autoInstall === 'yarn') {
+                cmd = autoInstall
             } else {
                 cmd = shouldUseYarn() ? 'yarn' : 'npm';
             }
