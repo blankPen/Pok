@@ -17,19 +17,22 @@ declare const contextLib: {
             supportsColor: false | chalk.ColorSupport;
         };
     };
-    userConfig: object;
 };
 export interface PokCreateOptions {
     remote?: string;
     branch?: string;
 }
-export declare type Context = typeof contextLib;
+export declare type Context = typeof contextLib & {
+    setupConfig: {
+        outputDir: string;
+        sourceDir: string;
+        autoInstall: boolean | 'yarn' | 'npm';
+        env: object;
+    };
+};
 export interface CreatorConfig {
-    name?: string;
-    autoInstall?: boolean | string;
     handlebars?: Parameters<typeof hbs.compile>[1];
     filter?: RegExp | ((path: string) => boolean);
-    targetDir?: () => string;
     start?: () => string;
     setup?: () => any;
     render?: (file: {
@@ -39,22 +42,7 @@ export interface CreatorConfig {
     end?: () => void;
 }
 export declare class Creator {
-    context: {
-        prompts: typeof prompts;
-        shelljs: typeof shelljs;
-        chalk: chalk.Chalk & chalk.ChalkFunction & {
-            supportsColor: false | chalk.ColorSupport;
-            Level: chalk.Level;
-            Color: "black" | "red" | "green" | "yellow" | "blue" | "magenta" | "cyan" | "white" | "gray" | "grey" | "blackBright" | "redBright" | "greenBright" | "yellowBright" | "blueBright" | "magentaBright" | "cyanBright" | "whiteBright" | "bgBlack" | "bgRed" | "bgGreen" | "bgYellow" | "bgBlue" | "bgMagenta" | "bgCyan" | "bgWhite" | "bgGray" | "bgGrey" | "bgBlackBright" | "bgRedBright" | "bgGreenBright" | "bgYellowBright" | "bgBlueBright" | "bgMagentaBright" | "bgCyanBright" | "bgWhiteBright";
-            ForegroundColor: "black" | "red" | "green" | "yellow" | "blue" | "magenta" | "cyan" | "white" | "gray" | "grey" | "blackBright" | "redBright" | "greenBright" | "yellowBright" | "blueBright" | "magentaBright" | "cyanBright" | "whiteBright";
-            BackgroundColor: "bgBlack" | "bgRed" | "bgGreen" | "bgYellow" | "bgBlue" | "bgMagenta" | "bgCyan" | "bgWhite" | "bgGray" | "bgGrey" | "bgBlackBright" | "bgRedBright" | "bgGreenBright" | "bgYellowBright" | "bgBlueBright" | "bgMagentaBright" | "bgCyanBright" | "bgWhiteBright";
-            Modifiers: "reset" | "bold" | "dim" | "italic" | "underline" | "inverse" | "hidden" | "strikethrough" | "visible";
-            stderr: chalk.Chalk & {
-                supportsColor: false | chalk.ColorSupport;
-            };
-        };
-        userConfig: object;
-    };
+    context: Context;
     private loadCreator;
     run(params: PokCreateOptions): Promise<void>;
     runPok({ config, templateDir, configPath }: {

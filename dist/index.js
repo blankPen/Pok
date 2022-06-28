@@ -89,7 +89,6 @@ var contextLib = {
     prompts: prompts_1.default,
     shelljs: shelljs_1.default,
     chalk: chalk_1.default,
-    userConfig: {},
 };
 var scanFiles = function (templateDir) {
     var result = new Set();
@@ -113,7 +112,12 @@ var cancel = function () {
 };
 var Creator = /** @class */ (function () {
     function Creator() {
-        this.context = __assign({}, contextLib);
+        this.context = __assign(__assign({}, contextLib), { setupConfig: {
+                outputDir: '',
+                sourceDir: './',
+                autoInstall: false,
+                env: {},
+            } });
     }
     Creator.prototype.loadCreator = function (_a) {
         var remote = _a.remote, branch = _a.branch;
@@ -223,22 +227,28 @@ var Creator = /** @class */ (function () {
     Creator.prototype.runPok = function (_a) {
         var config = _a.config, templateDir = _a.templateDir, configPath = _a.configPath;
         return __awaiter(this, void 0, void 0, function () {
-            var _b, _c, sourceDir, _d, outputDir, _e, tempEnv, _f, autoInstall, _g, targetPath, outputDir_1, targetDir, rootExists, overwrite, sourcePath, files, i, filepath, relativePath, outputFilePath, tempCode, cmd;
-            return __generator(this, function (_h) {
-                switch (_h.label) {
+            var _b, _c, _d, _e, _f, _g, _h, sourceDir, _j, outputDir, _k, env, _l, autoInstall, targetPath, outputDir_1, targetDir, rootExists, overwrite, sourcePath, files, i, filepath, relativePath, outputFilePath, tempCode, cmd;
+            return __generator(this, function (_m) {
+                switch (_m.label) {
                     case 0:
                         if (config.start)
                             config.start();
+                        // setup config
+                        _b = this.context;
+                        _d = (_c = Object).assign;
+                        _e = [this.context.setupConfig];
                         if (!config.setup) return [3 /*break*/, 2];
                         return [4 /*yield*/, config.setup()];
                     case 1:
-                        _g = _h.sent();
+                        _f = _m.sent();
                         return [3 /*break*/, 3];
                     case 2:
-                        _g = {};
-                        _h.label = 3;
+                        _f = {};
+                        _m.label = 3;
                     case 3:
-                        _b = _g, _c = _b.sourceDir, sourceDir = _c === void 0 ? './' : _c, _d = _b.outputDir, outputDir = _d === void 0 ? '' : _d, _e = _b.tempEnv, tempEnv = _e === void 0 ? {} : _e, _f = _b.autoInstall, autoInstall = _f === void 0 ? false : _f;
+                        // setup config
+                        _b.setupConfig = _d.apply(_c, _e.concat([_f]));
+                        _g = this.context.setupConfig, _h = _g.sourceDir, sourceDir = _h === void 0 ? './' : _h, _j = _g.outputDir, outputDir = _j === void 0 ? '' : _j, _k = _g.env, env = _k === void 0 ? {} : _k, _l = _g.autoInstall, autoInstall = _l === void 0 ? false : _l;
                         targetPath = process.cwd();
                         if (!outputDir) return [3 /*break*/, 4];
                         targetPath = path_1.default.resolve(process.cwd(), outputDir);
@@ -250,14 +260,14 @@ var Creator = /** @class */ (function () {
                             validate: function (value) { return !!value || ''; }
                         })];
                     case 5:
-                        outputDir_1 = (_h.sent()).outputDir;
+                        outputDir_1 = (_m.sent()).outputDir;
                         targetPath = path_1.default.join(process.cwd(), outputDir_1);
-                        _h.label = 6;
+                        _m.label = 6;
                     case 6:
                         targetDir = targetPath.replace(process.cwd() + '/', '');
                         return [4 /*yield*/, fs_extra_1.default.pathExists(targetPath)];
                     case 7:
-                        rootExists = _h.sent();
+                        rootExists = _m.sent();
                         if (!rootExists) return [3 /*break*/, 9];
                         return [4 /*yield*/, this.context.prompts({
                                 name: 'overwrite',
@@ -268,14 +278,14 @@ var Creator = /** @class */ (function () {
                                 inactive: '否'
                             })];
                     case 8:
-                        overwrite = (_h.sent()).overwrite;
+                        overwrite = (_m.sent()).overwrite;
                         if (!overwrite)
                             return [2 /*return*/, cancel()];
-                        _h.label = 9;
+                        _m.label = 9;
                     case 9:
                         sourcePath = path_1.default.join(templateDir, sourceDir);
                         return [4 /*yield*/, scanFiles(sourcePath)];
-                    case 10: return [4 /*yield*/, (_h.sent()).filter(function (filepath) {
+                    case 10: return [4 /*yield*/, (_m.sent()).filter(function (filepath) {
                             // filter file
                             if (filepath.startsWith(sourcePath + "/.git/"))
                                 return false;
@@ -295,9 +305,9 @@ var Creator = /** @class */ (function () {
                             return true;
                         }).sort()];
                     case 11:
-                        files = _h.sent();
+                        files = _m.sent();
                         i = 0;
-                        _h.label = 12;
+                        _m.label = 12;
                     case 12:
                         if (!(i < files.length)) return [3 /*break*/, 17];
                         filepath = files[i];
@@ -305,9 +315,9 @@ var Creator = /** @class */ (function () {
                         outputFilePath = path_1.default.join(targetPath, path_1.default.dirname(relativePath), path_1.default.basename(relativePath, '.hbs'));
                         return [4 /*yield*/, fs_extra_1.default.readFile(filepath, 'utf8')];
                     case 13:
-                        tempCode = _h.sent();
+                        tempCode = _m.sent();
                         try {
-                            tempCode = handlebars_1.default.compile(tempCode, config.handlebars)(__assign({}, tempEnv));
+                            tempCode = handlebars_1.default.compile(tempCode, config.handlebars)(__assign({}, env));
                         }
                         catch (error) {
                             logger.error('hbs.compile 失败, 请检查模板是否正确:', relativePath);
@@ -320,12 +330,12 @@ var Creator = /** @class */ (function () {
                         return [4 /*yield*/, fs_extra_1.default.ensureDir(path_1.default.dirname(outputFilePath))];
                     case 14:
                         // write temp
-                        _h.sent();
+                        _m.sent();
                         return [4 /*yield*/, fs_extra_1.default.writeFile(outputFilePath, tempCode)];
                     case 15:
-                        _h.sent();
+                        _m.sent();
                         logger.success(chalk_1.default.green('created') + " " + relativePath);
-                        _h.label = 16;
+                        _m.label = 16;
                     case 16:
                         i++;
                         return [3 /*break*/, 12];
@@ -348,14 +358,14 @@ var Creator = /** @class */ (function () {
                         console.log('');
                         return [4 /*yield*/, config.end()];
                     case 18:
-                        _h.sent();
+                        _m.sent();
                         console.log('');
                         return [3 /*break*/, 20];
                     case 19:
                         console.log('');
                         logger.success('项目创建完成');
                         console.log('');
-                        _h.label = 20;
+                        _m.label = 20;
                     case 20: return [2 /*return*/];
                 }
             });

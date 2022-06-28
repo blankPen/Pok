@@ -42,7 +42,6 @@ const contextLib = {
     prompts: prompts,
     shelljs: shelljs,
     chalk: chalk,
-    userConfig: {} as object,
 }
 
 export interface PokCreateOptions {
@@ -50,13 +49,17 @@ export interface PokCreateOptions {
     branch?: string;
 }
 
-export type Context = typeof contextLib;
+export type Context = typeof contextLib & {
+    setupConfig: {
+        outputDir: string;
+        sourceDir: string;
+        autoInstall: boolean | 'yarn' | 'npm';
+        env: object;
+    }
+};
 export interface CreatorConfig {
-    name?: string;
-    autoInstall?: boolean | string;
     handlebars?: Parameters<typeof hbs.compile>[1];
     filter?: RegExp | ((path: string) => boolean);
-    targetDir?: () => string;
     start?: () => string;
     setup?: () => any;
     render?: (file: { path: string, code: string }) => string;
@@ -86,8 +89,14 @@ const cancel = () => {
 }
 
 export class Creator {
-    context = {
-        ...contextLib
+    context: Context = {
+        ...contextLib,
+        setupConfig: {
+            outputDir: '',
+            sourceDir: './',
+            autoInstall: false,
+            env: {},
+        },
     }
 
     private async loadCreator({ remote, branch }: PokCreateOptions) {
@@ -168,15 +177,14 @@ export class Creator {
 
     async runPok({ config, templateDir, configPath }: { config: CreatorConfig, templateDir: string, configPath: string }) {
         if (config.start) config.start();
-        // ask user config
+        // setup config
+        this.context.setupConfig = Object.assign(this.context.setupConfig, config.setup ? await config.setup() : {});
         const {
             sourceDir = './',
             outputDir = '',
-            tempEnv = {},
+            env = {},
             autoInstall = false,
-        } = config.setup ? await config.setup() : {};
-        // Object.assign(this.context.userConfig, params.env);
-
+        } = this.context.setupConfig;
         // get output basePath
         let targetPath = process.cwd();
         if (outputDir) {
@@ -221,6 +229,7 @@ export class Creator {
             }
             return true
         }).sort();
+
         // each render template
         for (let i = 0; i < files.length; i++) {
             const filepath = files[i];
@@ -229,7 +238,7 @@ export class Creator {
             // compile temp
             let tempCode = await fs.readFile(filepath, 'utf8');
             try {
-                tempCode = hbs.compile(tempCode, config.handlebars)({ ...tempEnv });
+                tempCode = hbs.compile(tempCode, config.handlebars)({ ...env });
             } catch (error) {
                 logger.error('hbs.compile 失败, 请检查模板是否正确:', relativePath);
                 logger.error(error);
