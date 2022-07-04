@@ -4,5 +4,6 @@ node_modules/
 .prepushcache
 .vscode/
 lib/
+dist/
 package-lock.json
 yarn.lock
