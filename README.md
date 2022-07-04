@@ -110,3 +110,6 @@ module.exports = function creator(ctx) {
 - [shelljs](https://github.com/shelljs/shelljs)  🐚 Portable Unix shell commands for Node.js
 - [chalk](https://github.com/chalk/chalk) 🖍 Terminal string styling done right
 
+
+## ❯ Licence
+MIT
