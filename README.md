@@ -34,7 +34,7 @@ npm install pok -g
 
 
 ## ❯ 使用
-### 同时CLI使用
+### 在终端中使用
 ```bash
 # initial a project by pok-template
 pok ssh://xxx.git
