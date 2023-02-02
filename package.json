@@ -9,6 +9,11 @@
     "dev": "tsc -w",
     "build": "tsc"
   },
+  "files": [
+    "bin",
+    "dist",
+    "README.md"
+  ],
   "bin": {
     "pok": "./bin/pok"
   },
