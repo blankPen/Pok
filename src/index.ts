@@ -240,9 +240,9 @@ export class Creator {
             try {
                 tempCode = hbs.compile(tempCode, config.handlebars)({ ...env });
             } catch (error) {
-                logger.error('hbs.compile 失败, 请检查模板是否正确:', relativePath);
-                logger.error(error);
-                process.exit(1);
+                // logger.error('hbs.compile 失败, 请检查模板是否正确:', relativePath);
+                // logger.error(error);
+                // process.exit(1);
             }
             if (config.render) tempCode = config.render({ path: filepath, code: tempCode });
             // write temp
